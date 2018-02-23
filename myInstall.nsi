@@ -1,3 +1,7 @@
+!include "LogicLib.nsh"
+!include "MUI2.nsh"
+
+
 # This installs two files, app.exe and logo.ico, creates a start menu shortcut, builds an uninstaller, and
 # adds uninstall information to the registry for Add/Remove Programs
  
@@ -34,22 +38,25 @@ Icon "logo.ico"
 outFile "${APPNAME}.exe"
 
  
-!include LogicLib.nsh
-; !include MUI.nsh
+
  
 # replaced by Modern User Interface block
 # Just three pages - license agreement, install location, and installation
-page license
-page directory
-Page instfiles
+; page license
+; page directory
+; Page instfiles
 
-; !insertmacro MUI_PAGE_LICENSE "license.rtf"
-; !insertmacro MUI_PAGE_DIRECTORY
-; #!insertmacro MUI_PAGE_STARTMENU "page_id" "variable"
-; !insertmacro MUI_PAGE_FINISH
+!insertmacro MUI_PAGE_LICENSE "license.rtf"
+!insertmacro MUI_PAGE_DIRECTORY
+#!insertmacro MUI_PAGE_STARTMENU "page_id" "variable"
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
 
-; !insertmacro MUI_UNPAGE_CONFIRM
-; !insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_DIRECTORY
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
 
 
 
@@ -83,12 +90,12 @@ ${EndIf}
 !insertmacro "onInit" "." 		; .onInit 	function
 !insertmacro "onInit" "un."		; un.onInit function
 
+
 Section Install
 	# Files for the install directory - to build the installer, these should be in the same directory as the install script (this file)
 	setOutPath $INSTDIR
 
 	Call makeFilesFunction ; install files
-	Call makeUninstallerFile
 	Call makeStartMenu
 	Call makeRegistryInformation
 SectionEnd
@@ -98,7 +105,6 @@ Section un.Install
 	setOutPath $INSTDIR
 
 	Call un.makeStartMenu		; remove start menu
-	Call un.makeUninstallerFile ; remove uninstaller file
 	Call un.makeFilesFunction 	; remove files
 	Call un.makeRegistryInformation
 SectionEnd
@@ -112,6 +118,9 @@ SectionEnd
         ${CMD_ARG} "app.exe"
         ${CMD_ARG} "logo.ico"
         ${CMD_ARG} "README.txt"
+
+        # Uninstaller - See function un.onInit and section "uninstall" for configuration
+		Call ${UN_ARG}makeUninstallerFile
 
         # Try to remove the install directory - this will only happen if it is empty
         StrCmp ${UN_ARG} "" 0 next ; goes to un: when ${UN_ARG} =! ""

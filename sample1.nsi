@@ -7,8 +7,8 @@
 # If you change the names "app.exe", "logo.ico", or "license.rtf" you should do a search and replace - they
 # show up in a few places.
 # All the other settings can be tweaked by editing the !defines at the top of this script
-!define APPNAME "App Name"
-!define COMPANYNAME "Company Name"
+!define APPNAME "NSI BasicApp"
+!define COMPANYNAME "NSI"
 !define DESCRIPTION "A short description goes here"
 # These three must be integers
 !define VERSIONMAJOR 1
