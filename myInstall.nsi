@@ -20,7 +20,7 @@
 !define UPDATEURL "http://..." # "Product Updates" link
 !define ABOUTURL "http://..." # "Publisher" link
 # This is the size (in kB) of all the files copied into "Program Files"
-!define INSTALLSIZE 7233
+;!define INSTALLSIZE 7233
  
 RequestExecutionLevel admin ;Require admin rights on NT6+ (When UAC is turned on)
  
@@ -35,11 +35,23 @@ outFile "${APPNAME}.exe"
 
  
 !include LogicLib.nsh
+; !include MUI.nsh
  
+# replaced by Modern User Interface block
 # Just three pages - license agreement, install location, and installation
 page license
 page directory
 Page instfiles
+
+; !insertmacro MUI_PAGE_LICENSE "license.rtf"
+; !insertmacro MUI_PAGE_DIRECTORY
+; #!insertmacro MUI_PAGE_STARTMENU "page_id" "variable"
+; !insertmacro MUI_PAGE_FINISH
+
+; !insertmacro MUI_UNPAGE_CONFIRM
+; !insertmacro MUI_UNPAGE_INSTFILES
+
+
 
 
 # Verify user admin
@@ -59,20 +71,19 @@ ${EndIf}
 	function ${UN_ARG}onInit
 		setShellVarContext all
 
-		!if ${UN_ARG} == "un"
-			#Verify the uninstaller - last chance to back out
-			MessageBox MB_OKCANCEL "Permanantly remove ${APPNAME}?" IDOK next
-				Abort
-			next:
-		!endif
-
+		${If} ${UN_ARG} == "un."
+		#Verify the uninstaller - last chance to back out
+		MessageBox MB_OKCANCEL "Permanantly remove ${APPNAME}?" IDOK next
+			Abort
+		next:
+		${EndIf}
 		!insertmacro VerifyUserIsAdmin
 	functionEnd
 !macroend
 !insertmacro "onInit" "." 		; .onInit 	function
 !insertmacro "onInit" "un."		; un.onInit function
 
-Section "Install" section_index_output
+Section Install
 	# Files for the install directory - to build the installer, these should be in the same directory as the install script (this file)
 	setOutPath $INSTDIR
 
@@ -82,7 +93,7 @@ Section "Install" section_index_output
 	Call makeRegistryInformation
 SectionEnd
 
-Section "UnInstall"
+Section un.Install
 	# Files for the install directory - to build the installer, these should be in the same directory as the install script (this file)
 	setOutPath $INSTDIR
 
@@ -103,8 +114,8 @@ SectionEnd
         ${CMD_ARG} "README.txt"
 
         # Try to remove the install directory - this will only happen if it is empty
-        StrCmp ${UN_ARG} "" 0 un ; goes to un: when ${UN_ARG} =! ""
-        un: 
+        StrCmp ${UN_ARG} "" 0 next ; goes to un: when ${UN_ARG} =! ""
+        next: 
         rmDir $INSTDIR
     FunctionEnd
 !macroend
@@ -134,7 +145,7 @@ Function un.makeStartMenu
 FunctionEnd
 
 
-Function "makeRegistryInformation"
+Function makeRegistryInformation
 	# Registry information for add/remove programs
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "DisplayName" "${COMPANYNAME} - ${APPNAME} - ${DESCRIPTION}"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
@@ -152,9 +163,9 @@ Function "makeRegistryInformation"
 	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "NoModify" 1
 	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "NoRepair" 1
 	# Set the INSTALLSIZE constant (!defined at the top of this script) so Add/Remove Programs can accurately report the size
-	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
+	;WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
 FunctionEnd
-Function "un.makeRegistryInformation"
+Function un.makeRegistryInformation
 	# Remove uninstaller information from the registry
 	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}"
 FunctionEnd
