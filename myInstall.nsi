@@ -41,6 +41,8 @@ page license
 page directory
 Page instfiles
 
+
+# Verify user admin
 !macro VerifyUserIsAdmin
 UserInfo::GetAccountType
 pop $0
@@ -50,41 +52,47 @@ ${If} $0 != "admin" ;Require admin rights on NT4+
         quit
 ${EndIf}
 !macroend
- 
-function .onInit
-	setShellVarContext all
-	!insertmacro VerifyUserIsAdmin
-functionEnd
 
-Section "install"
-	# your code here
+
+# .onInit & un.onInit functions 
+!macro onInit UN_ARG
+	function ${UN_ARG}onInit
+		setShellVarContext all
+
+		!if ${UN_ARG} == "un"
+			#Verify the uninstaller - last chance to back out
+			MessageBox MB_OKCANCEL "Permanantly remove ${APPNAME}?" IDOK next
+				Abort
+			next:
+		!endif
+
+		!insertmacro VerifyUserIsAdmin
+	functionEnd
+!macroend
+!insertmacro "onInit" "." 		; .onInit 	function
+!insertmacro "onInit" "un."		; un.onInit function
+
+Section "Install" section_index_output
 	# Files for the install directory - to build the installer, these should be in the same directory as the install script (this file)
 	setOutPath $INSTDIR
-	
-	Call makeFilesFunction
 
- 
-	# Uninstaller - See function un.onInit and section "uninstall" for configuration
-	writeUninstaller "$INSTDIR\uninstall.exe"
- 
-	# Start Menu
-	createDirectory "$SMPROGRAMS\${COMPANYNAME}"
-	createShortCut "$SMPROGRAMS\${COMPANYNAME}\${APPNAME}.lnk" "$INSTDIR\app.exe" "" "$INSTDIR\logo.ico"
-
-	Call RegistryKeyInformation
+	Call makeFilesFunction ; install files
+	Call makeUninstallerFile
+	Call makeStartMenu
+	Call makeRegistryInformation
 SectionEnd
 
-/*
-Function "makeFilesToInstall"
-	# Files added here should be removed by the uninstaller (see section "uninstall")
-	file "app.exe"
-	file "logo.ico"
-	# Add any other files for the install directory (license files, app data, etc) here
+Section "UnInstall"
+	# Files for the install directory - to build the installer, these should be in the same directory as the install script (this file)
+	setOutPath $INSTDIR
 
-	file "README.txt"
+	Call un.makeStartMenu		; remove start menu
+	Call un.makeUninstallerFile ; remove uninstaller file
+	Call un.makeFilesFunction 	; remove files
+	Call un.makeRegistryInformation
+SectionEnd
 
-FunctionEnd
-*/
+
 
 # makeFilesFunction 	with:	File 	"app.exe" and
 # un.makeFilesFunction 	with: 	Delete 	"app.exe"
@@ -93,14 +101,40 @@ FunctionEnd
         ${CMD_ARG} "app.exe"
         ${CMD_ARG} "logo.ico"
         ${CMD_ARG} "README.txt"
+
+        # Try to remove the install directory - this will only happen if it is empty
+        StrCmp ${UN_ARG} "" 0 un ; goes to un: when ${UN_ARG} =! ""
+        un: 
+        rmDir $INSTDIR
     FunctionEnd
 !macroend
 !insertmacro makeFilesFunction "" "File"
 !insertmacro makeFilesFunction "un." "Delete"
 
+# write & delete uninstaller
+!macro makeUninstallerFile UN_ARG CMD_ARG
+	Function ${UN_ARG}makeUninstallerFile
+		# Uninstaller - See function un.onInit and section "uninstall" for configuration
+		${CMD_ARG} "$INSTDIR\uninstall.exe"
+	FunctionEnd
+!macroend
+!insertmacro "makeUninstallerFile" "" 	 "writeUninstaller"
+!insertmacro "makeUninstallerFile" "un." "delete"
+
+# Start Menu
+Function makeStartMenu
+	createDirectory "$SMPROGRAMS\${COMPANYNAME}"
+	createShortCut  "$SMPROGRAMS\${COMPANYNAME}\${APPNAME}.lnk" "$INSTDIR\app.exe" "" "$INSTDIR\logo.ico"
+FunctionEnd
+Function un.makeStartMenu
+	# Remove Start Menu launcher
+	delete "$SMPROGRAMS\${COMPANYNAME}\${APPNAME}.lnk"
+	# Try to remove the Start Menu folder - this will only happen if it is empty
+	rmDir "$SMPROGRAMS\${COMPANYNAME}"
+FunctionEnd
 
 
-Function "RegistryKeyInformation"
+Function "makeRegistryInformation"
 	# Registry information for add/remove programs
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "DisplayName" "${COMPANYNAME} - ${APPNAME} - ${DESCRIPTION}"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
@@ -120,39 +154,9 @@ Function "RegistryKeyInformation"
 	# Set the INSTALLSIZE constant (!defined at the top of this script) so Add/Remove Programs can accurately report the size
 	WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
 FunctionEnd
-
-
-
-
-
-
-
-# Uninstaller
- 
-function un.onInit
-	SetShellVarContext all
- 
-	#Verify the uninstaller - last chance to back out
-	MessageBox MB_OKCANCEL "Permanantly remove ${APPNAME}?" IDOK next
-		Abort
-	next:
-	!insertmacro VerifyUserIsAdmin
-functionEnd
-
-
-Section "uninstall"
-	# Remove Start Menu launcher
-	delete "$SMPROGRAMS\${COMPANYNAME}\${APPNAME}.lnk"
-	# Try to remove the Start Menu folder - this will only happen if it is empty
-	rmDir "$SMPROGRAMS\${COMPANYNAME}"
-
-
-	# Remove files
-	Call un.makeFilesFunction
-
-	# Always delete uninstaller as the last action
-	delete $INSTDIR\uninstall.exe
-
+Function "un.makeRegistryInformation"
 	# Remove uninstaller information from the registry
 	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}"
-SectionEnd
+FunctionEnd
+
+
